@@ -215,7 +215,7 @@ const Login = () => {
 
           <div className="rounded-2xl border border-white/[0.08] bg-slate-900/80 p-8 shadow-2xl shadow-black/40 backdrop-blur-xl">
             <div className="mb-8">
-              <h2 className="mb-1.5 text-xl font-semibold text-white">Welcome back</h2>
+              <h2 className="mb-1.5 text-xl font-semibold text-white">Welcome </h2>
               <p className="text-sm text-slate-400">Sign in to your InsightHub account</p>
             </div>
 
