@@ -694,7 +694,9 @@ const AudienceQuestionsSection = ({ userPrefs, saveItem, isSaved }) => {
     },
   });
 
-  const posts = data?.data?.posts || [];
+  const posts = useMemo(() => {
+  return data?.data?.posts || [];
+}, [data]);
 
   const chartData = useMemo(
     () =>
@@ -1241,16 +1243,25 @@ const Dashboard = () => {
     }
   });
 
-  const refs = {
-    dashboard: useRef(null),
-    keywords: useRef(null),
-    trends: useRef(null),
-    audience: useRef(null),
-    youtube: useRef(null),
-    saved: useRef(null),
-    planner: useRef(null),
-    export: useRef(null),
-  };
+  const dashboardRef = useRef(null);
+const keywordsRef = useRef(null);
+const trendsRef = useRef(null);
+const audienceRef = useRef(null);
+const youtubeRef = useRef(null);
+const savedRef = useRef(null);
+const plannerRef = useRef(null);
+const exportRef = useRef(null);
+
+const refs = useMemo(() => ({
+  dashboard: dashboardRef,
+  keywords: keywordsRef,
+  trends: trendsRef,
+  audience: audienceRef,
+  youtube: youtubeRef,
+  saved: savedRef,
+  planner: plannerRef,
+  export: exportRef,
+}), []);
 
   const userId = user?.id || user?._id || user?.email;
   const { savedResearch, saveItem, removeItem, updateNote, isSaved } = useSavedResearch(userId);
@@ -1316,7 +1327,7 @@ const Dashboard = () => {
     });
 
     return () => observer.disconnect();
-  }, []);
+  }, [refs]);
 
   const scrollTo = (key) => {
     refs[key]?.current?.scrollIntoView({
