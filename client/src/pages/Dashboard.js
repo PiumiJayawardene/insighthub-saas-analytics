@@ -401,7 +401,9 @@ const TrendFinderSection = ({ userPrefs, saveItem, isSaved }) => {
     },
   });
 
-  const articles = data?.data?.articles || [];
+  const articles = useMemo(() => {
+  return data?.data?.articles || [];
+}, [data]);
   const visibleArticles = articles.slice(0, visibleCount);
 
   const sourceChartData = useMemo(() => {
