@@ -14,7 +14,7 @@ const cacheEntrySchema = new mongoose.Schema({
     },
     dataType: {
         type: String,
-        enum: ['news', 'weather', 'reddit', 'summary'],
+        enum: ['news', 'reddit', 'summary'],
         required: true,
     },
     data: {

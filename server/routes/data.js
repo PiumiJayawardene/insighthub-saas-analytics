@@ -6,17 +6,15 @@
  *   3. Rate limiting is applied server-side
  *
  * GET /api/data/news?topic=technology&pageSize=8
- * GET /api/data/weather?city=London
  * GET /api/data/reddit?subreddit=technology&limit=10
  * GET /api/data/summary
  */
-
+const { searchYouTubeVideos } = require('../services/youtubeService');
 const express = require('express');
 const axios = require('axios');
 const rateLimit = require('express-rate-limit');
 const { protect } = require('../middleware/auth');
 const CacheEntry = require('../models/CacheEntry');
-
 const router = express.Router();
 
 const apiLimiter = rateLimit({
@@ -25,29 +23,69 @@ const apiLimiter = rateLimit({
     message: { error: 'Too many requests. Please slow down.' },
 });
 
+router.get('/youtube', protect, apiLimiter, async (req, res) => {
+    try {
+        const keyword = req.query.keyword || 'digital marketing';
+        const limit = Math.min(parseInt(req.query.limit) || 6, 12);
+        const cacheKey = `youtube:${keyword.toLowerCase()}:${limit}`;
+
+        const result = await CacheEntry.getOrFetch(
+            cacheKey,
+            'youtube',
+            async () => {
+                const videos = await searchYouTubeVideos(keyword, limit);
+                return { keyword, videos, count: videos.length };
+            },
+            60
+        );
+
+        res.json({ success: true, ...result });
+
+    } catch (error) {
+        console.error('YouTube API error:', error.message);
+
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to load YouTube content trends.',
+        });
+    }
+});
 router.get('/news', protect, apiLimiter, async (req, res) => {
     try {
         const topic = req.query.topic || 'technology';
-        const pageSize = req.query.pageSize || 8;
-        const cacheKey = `news:${topic}:${pageSize}`;
+        const pageSize = Math.min(parseInt(req.query.pageSize) || 20, 30);
+        const cacheKey = `news:${topic}:${pageSize}:everything`;
 
         const result = await CacheEntry.getOrFetch(
             cacheKey,
             'news',
             async () => {
                 const response = await axios.get(
-                    'https://newsapi.org/v2/top-headlines',
+                    'https://newsapi.org/v2/everything',
                     {
                         params: {
                             q: topic,
-                            pageSize: parseInt(pageSize),
+                            pageSize,
                             language: 'en',
+                            sortBy: 'publishedAt',
                             apiKey: process.env.NEWS_API_KEY,
                         },
                         timeout: 10000,
                     }
                 );
-                return response.data;
+
+                const cleanArticles = (response.data.articles || []).filter((article) =>
+                    article.title &&
+                    article.title !== '[Removed]' &&
+                    article.description &&
+                    article.url
+                );
+
+                return {
+                    ...response.data,
+                    articles: cleanArticles,
+                    totalReturned: cleanArticles.length,
+                };
             },
             30
         );
@@ -60,53 +98,22 @@ router.get('/news', protect, apiLimiter, async (req, res) => {
                 error: 'NewsAPI requires HTTPS in production. Using cached data only.',
             });
         }
+
         if (err.response?.status === 429) {
             return res.status(429).json({
                 error: 'NewsAPI rate limit reached. Try again in 1 hour.',
             });
         }
-        console.error('News fetch error:', err.message);
-        res.status(500).json({ error: 'Failed to fetch news data.' });
+
+        console.error('News fetch error:', err.response?.data || err.message);
+
+        res.status(500).json({
+            error: 'Failed to fetch news data.',
+        });
     }
 });
 
-router.get('/weather', protect, apiLimiter, async (req, res) => {
-    try {
-        const city = req.query.city || req.user.preferences?.city || 'London';
-        const cacheKey = `weather:${city.toLowerCase()}`;
 
-        const result = await CacheEntry.getOrFetch(
-            cacheKey,
-            'weather',
-            async () => {
-                const response = await axios.get(
-                    'https://api.openweathermap.org/data/2.5/weather',
-                    {
-                        params: {
-                            q: city,
-                            appid: process.env.OPENWEATHER_API_KEY,
-                            units: 'metric',
-                        },
-                        timeout: 8000,
-                    }
-                );
-                return response.data;
-            },
-            15
-        );
-
-        res.json({ success: true, city, ...result });
-
-    } catch (err) {
-        if (err.response?.status === 404) {
-            return res.status(404).json({
-                error: `City "${req.query.city}" not found. Try a different city name.`,
-            });
-        }
-        console.error('Weather fetch error:', err.message);
-        res.status(500).json({ error: 'Failed to fetch weather data.' });
-    }
-});
 
 router.get('/reddit', protect, apiLimiter, async (req, res) => {
     try {

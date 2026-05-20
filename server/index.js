@@ -1,15 +1,20 @@
 /**
  * InsightHub — Express API Server
  */
-const authRoutes = require('./routes/auth');
-const dataRoutes = require('./routes/data');
-const metricsRoutes = require('./routes/metrics');
+/**
+ * InsightHub — Express API Server
+ */
+require('dotenv').config();
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-require('dotenv').config();
+
+const authRoutes = require('./routes/auth');
+const dataRoutes = require('./routes/data');
+const metricsRoutes = require('./routes/metrics');
 
 const app = express();
 
